@@ -2,7 +2,7 @@ package ru.netology.tests;
 
 public class CardDeliveryOrderTest {
 
-    //end to end
+    //end to end (состояние загрузки не более 15сек)
     //отправка пустой формы
     //поле ГОРОД не заполнено
     //поле ДАТА ВСТРЕЧИ не заполнено
