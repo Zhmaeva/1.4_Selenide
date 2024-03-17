@@ -1,17 +1,16 @@
 package ru.netology.tests;
 
-import com.codeborne.selenide.Condition;
-import com.codeborne.selenide.conditions.Text;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.openqa.selenium.Keys;
+import org.openqa.selenium.support.Color;
 
 import java.time.Duration;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 
 import static com.codeborne.selenide.Condition.*;
-import static com.codeborne.selenide.Selectors.byText;
-import static com.codeborne.selenide.Selectors.withText;
 import static com.codeborne.selenide.Selenide.*;
 
 public class CardDeliveryOrderTest {
@@ -34,13 +33,25 @@ public class CardDeliveryOrderTest {
     String notificationTitleText = "Успешно!";
     String notificationContentText = "Встреча успешно забронирована на ";
     String emptyFieldText = "Поле обязательно для заполнения";
+    String emptyDateText = "Неверно введена дата";
+    String invalidCityText = "Доставка в выбранный город недоступна";
+    String invalidDateText = "Заказ на выбранную дату невозможен";
+    String invalidNameText = "Имя и Фамилия указаные неверно. Допустимы только русские буквы, пробелы и дефисы.";
+    String invalidPhoneText = "Телефон указан неверно. Должно быть 11 цифр, например, +79012345678.";
 
     String calculateDate(int days) {
         return LocalDate.now().plusDays(days).format(DateTimeFormatter.ofPattern("dd.MM.yyyy"));
     }
+
+    void clearField(String selector) {
+        $(selector).sendKeys(Keys.CONTROL + "A");
+        $(selector).sendKeys(Keys.BACK_SPACE);
+    }
+
     @BeforeEach
-    void setUpAll() {
+    void prepareForTest() {
         open("http://localhost:9999/");
+        clearField(validDateSelector);
     }
 
     //end to end (состояние загрузки не более 15сек)
@@ -48,6 +59,7 @@ public class CardDeliveryOrderTest {
     void shouldSendCardOrderForm() {
         String date = calculateDate(3);
         $(validCitySelector).setValue("Москва");
+        clearField(validDateSelector);
         $(validDateSelector).setValue(date);
         $(validNameSelector).setValue("Иван Иванов-Петров");
         $(validPhoneSelector).setValue("+70000000000");
@@ -61,30 +73,234 @@ public class CardDeliveryOrderTest {
     //отправка пустой формы
     @Test
     void shouldNotSendEmptyForm() {
-        $(validCitySelector).clear();
-        $(validDateSelector).clear();
-        $(validNameSelector).clear();
-        $(validPhoneSelector).clear();
-        $(validAgreementSelector).isEnabled();
+        clearField(validCitySelector);
+        clearField(validDateSelector);
+        clearField(validNameSelector);
+        clearField(validPhoneSelector);
         $$("button").find(exactText("Забронировать")).click();
         $(invalidCitySelector).shouldBe(visible).shouldHave(text(emptyFieldText));
     }
 
     //поле ГОРОД не заполнено
-    //поле ДАТА ВСТРЕЧИ не заполнено
-    //поле ФИО не заполнено
-    //поле ТЕЛЕФОН не заполнено
-    //чекбокс не активен
-    //поле ГОРОД заполнено не субъектом РФ
-    //поле ДАТА заполнено ранее трёх дней с текущей даты
-    //поле ФИО заполнено на иностранном языке
-    //поле ФИО заполнено символами
-    //поле ФИО заполнено цифрами
-    //поле ФИО заполнено со специфичными буквами (например ё)
-    //поле ФИО заполнено пробелами
-    //в поле ТЕЛЕФОН меньше 11 цифр
-    //в поле ТЕЛЕФОН больше 11 цифр
-    //в поле ТЕЛЕФОН нет символа +
-    //в поле ТЕЛЕФОН символ + в конце
+    @Test
+    void shouldNotSendFormWithEmptyCityField() {
+        String date = calculateDate(3);
+        clearField(validCitySelector);
+        $(validDateSelector).setValue(date);
+        $(validNameSelector).setValue("Петрова-Сидорова Елизавета");
+        $(validPhoneSelector).setValue("70000000000");
+        $(validAgreementSelector).click();
+        $$("button").find(exactText("Забронировать")).click();
+        $(validCitySelector + ".input__sub").shouldBe(hidden);
+        $(invalidCitySelector).shouldBe(visible).shouldHave(text(emptyFieldText));
+    }
 
+    //поле ДАТА ВСТРЕЧИ не заполнено
+    @Test
+    void shouldNotSendFormWithEmptyDateField() {
+        $(validCitySelector).setValue("Воронеж");
+        clearField(validDateSelector);
+        $(validNameSelector).setValue("Петрова-Сидорова Елизавета");
+        $(validPhoneSelector).setValue("+70000000000");
+        $(validAgreementSelector).click();
+        $$("button").find(exactText("Забронировать")).click();
+        $(validDateSelector + ".input__sub").shouldBe(hidden);
+        $(invalidDateSelector).shouldBe(visible).shouldHave(text(emptyDateText));
+    }
+
+    //поле ФИО не заполнено
+    @Test
+    void shouldNotSendFormWithEmptyNameField() {
+        String date = calculateDate(10);
+        $(validCitySelector).setValue("Петропавловск-Камчатский");
+        $(validDateSelector).setValue(date);
+        clearField(validNameSelector);
+        $(validPhoneSelector).setValue("+70000000000");
+        $(validAgreementSelector).click();
+        $$("button").find(exactText("Забронировать")).click();
+        $(validNameSelector + ".input__sub").shouldBe(hidden);
+        $(invalidNameSelector).shouldBe(visible).shouldHave(text(emptyFieldText));
+    }
+
+    //поле ТЕЛЕФОН не заполнено
+    @Test
+    void shouldNotSendFormWithEmptyPhoneField() {
+        String date = calculateDate(14);
+        $(validCitySelector).setValue("Южно-Сахалинск");
+        $(validDateSelector).setValue(date);
+        $(validNameSelector).setValue("Мария-Виктория Волхонская");
+        clearField(validPhoneSelector);
+        $(validAgreementSelector).click();
+        $$("button").find(exactText("Забронировать")).click();
+        $(validPhoneSelector + ".input__sub").shouldBe(hidden);
+        $(invalidPhoneSelector).shouldBe(visible).shouldHave(text(emptyFieldText));
+    }
+
+    //чекбокс не активен
+    @Test
+    void shouldNotSendFormWhenCheckboxNotActive() {
+        String date = calculateDate(7);
+        $(validCitySelector).setValue("Ханты-Мансийск");
+        $(validDateSelector).setValue(date);
+        $(validNameSelector).setValue("Мария-Виктория Волхонская");
+        $(validPhoneSelector).setValue("+70000000000");
+        $$("button").find(exactText("Забронировать")).click();
+        $(invalidAgreementSelector).shouldBe(visible);
+        $(notificationTitleSelector).shouldBe(hidden);
+        String color = Color.fromString($(invalidAgreementSelector).getCssValue("color")).asHex();
+        Assertions.assertEquals("#ff5c5c", color );
+    }
+    //поле ГОРОД заполнено не субъектом РФ
+    @Test
+    void shouldNotSendFormWhenCityNotRF() {
+        String date = calculateDate(3);
+        $(validCitySelector).setValue("Лондон");
+        $(validDateSelector).setValue(date);
+        $(validNameSelector).setValue("Мария-Виктория Волхонская");
+        $(validPhoneSelector).setValue("+70000000000");
+        $(validAgreementSelector).click();
+        $$("button").find(exactText("Забронировать")).click();
+        $(validCitySelector + ".input__sub").shouldBe(hidden);
+        $(invalidCitySelector).shouldBe(visible).shouldHave(text(invalidCityText));
+    }
+
+    //поле ДАТА заполнено ранее трёх дней с текущей даты
+    @Test
+    void shouldNotSendFormWhenDateLess3Days() {
+        String date = calculateDate(2);
+        $(validCitySelector).setValue("Челябинск");
+        $(validDateSelector).setValue(date);
+        $(validNameSelector).setValue("Мария-Виктория Волхонская");
+        $(validPhoneSelector).setValue("+70000000000");
+        $(validAgreementSelector).click();
+        $$("button").find(exactText("Забронировать")).click();
+        $(validDateSelector + ".input__sub").shouldBe(hidden);
+        $(invalidDateSelector).shouldBe(visible, Duration.ofSeconds(4)).shouldHave(text(invalidDateText));
+    }
+
+    //поле ФИО заполнено на иностранном языке
+    @Test
+    void shouldNotSendFormWhenNameIsNotRus() {
+        String date = calculateDate(3);
+        $(validCitySelector).setValue("Москва");
+        $(validDateSelector).setValue(date);
+        $(validNameSelector).setValue("María-Jose Carreño Quiñones");
+        $(validPhoneSelector).setValue("+70000000000");
+        $(validAgreementSelector).click();
+        $$("button").find(exactText("Забронировать")).click();
+        $(validNameSelector + ".input__sub").shouldBe(hidden);
+        $(invalidNameSelector).shouldBe(visible).shouldHave(text(invalidNameText));
+    }
+
+    //поле ФИО заполнено символами
+    @Test
+    void shouldNotSubmitFormIfNameIsFilledWithCharacters() {
+        String date = calculateDate(3);
+        $(validCitySelector).setValue("Москва");
+        $(validDateSelector).setValue(date);
+        $(validNameSelector).setValue(".");
+        $(validPhoneSelector).setValue("+70000000000");
+        $(validAgreementSelector).click();
+        $$("button").find(exactText("Забронировать")).click();
+        $(validNameSelector + ".input__sub").shouldBe(hidden);
+        $(invalidNameSelector).shouldBe(visible).shouldHave(text(invalidNameText));
+    }
+
+    //поле ФИО заполнено цифрами
+    @Test
+    void shouldNotSubmitFormIfNameIsFilledWithNumbers() {
+        String date = calculateDate(3);
+        $(validCitySelector).setValue("Москва");
+        $(validDateSelector).setValue(date);
+        $(validNameSelector).setValue("123456789");
+        $(validPhoneSelector).setValue("+70000000000");
+        $(validAgreementSelector).click();
+        $$("button").find(exactText("Забронировать")).click();
+        $(validNameSelector + ".input__sub").shouldBe(hidden);
+        $(invalidNameSelector).shouldBe(visible).shouldHave(text(invalidNameText));
+    }
+
+    //поле ФИО заполнено со специфичными буквами (например ё)
+    @Test
+    void shouldNotSubmitFormIfNameIsFilledWithSpecialSymbols() {
+        String date = calculateDate(3);
+        $(validCitySelector).setValue("Москва");
+        $(validDateSelector).setValue(date);
+        $(validNameSelector).setValue("ё");
+        $(validPhoneSelector).setValue("+70000000000");
+        $(validAgreementSelector).click();
+        $$("button").find(exactText("Забронировать")).click();
+        $(validNameSelector + ".input__sub").shouldBe(hidden);
+        $(invalidNameSelector).shouldBe(visible).shouldHave(text(invalidNameText));
+    }
+
+    //поле ФИО заполнено пробелами
+    @Test
+    void shouldNotSubmitFormIfNameIsFilledWithSpace() {
+        String date = calculateDate(3);
+        $(validCitySelector).setValue("Москва");
+        $(validDateSelector).setValue(date);
+        $(validNameSelector).setValue("         ");
+        $(validPhoneSelector).setValue("+70000000000");
+        $(validAgreementSelector).click();
+        $$("button").find(exactText("Забронировать")).click();
+        $(validNameSelector + ".input__sub").shouldBe(hidden);
+        $(invalidNameSelector).shouldBe(visible).shouldHave(text(emptyFieldText));
+    }
+
+    //в поле ТЕЛЕФОН меньше 11 цифр
+    @Test
+    void shouldNotSubmitFormIfPhoneLess11Numbers() {
+        String date = calculateDate(3);
+        $(validCitySelector).setValue("Москва");
+        $(validDateSelector).setValue(date);
+        $(validNameSelector).setValue("Петров Петр");
+        $(validPhoneSelector).setValue("+7000000000");
+        $(validAgreementSelector).click();
+        $$("button").find(exactText("Забронировать")).click();
+        $(validPhoneSelector + ".input__sub").shouldBe(hidden);
+        $(invalidPhoneSelector).shouldBe(visible).shouldHave(text(invalidPhoneText));
+    }
+
+    //в поле ТЕЛЕФОН больше 11 цифр
+    @Test
+    void shouldNotSubmitFormIfPhoneMore11Numbers() {
+        String date = calculateDate(3);
+        $(validCitySelector).setValue("Москва");
+        $(validDateSelector).setValue(date);
+        $(validNameSelector).setValue("Петров Петр");
+        $(validPhoneSelector).setValue("+7000000000000");
+        $(validAgreementSelector).click();
+        $$("button").find(exactText("Забронировать")).click();
+        $(validPhoneSelector + ".input__sub").shouldBe(hidden);
+        $(invalidPhoneSelector).shouldBe(visible).shouldHave(text(invalidPhoneText));
+    }
+
+    //в поле ТЕЛЕФОН нет символа +
+    @Test
+    void shouldNotSubmitFormIfPhoneWithoutPlus() {
+        String date = calculateDate(3);
+        $(validCitySelector).setValue("Москва");
+        $(validDateSelector).setValue(date);
+        $(validNameSelector).setValue("Петров Петр");
+        $(validPhoneSelector).setValue("70000000000");
+        $(validAgreementSelector).click();
+        $$("button").find(exactText("Забронировать")).click();
+        $(validPhoneSelector + ".input__sub").shouldBe(hidden);
+        $(invalidPhoneSelector).shouldBe(visible).shouldHave(text(invalidPhoneText));
+    }
+
+    //в поле ТЕЛЕФОН символ + в конце
+    @Test
+    void shouldNotSubmitFormIfPhoneHasPlusAtTheEnd() {
+        String date = calculateDate(3);
+        $(validCitySelector).setValue("Москва");
+        $(validDateSelector).setValue(date);
+        $(validNameSelector).setValue("Петров Петр");
+        $(validPhoneSelector).setValue("70000000000+");
+        $(validAgreementSelector).click();
+        $$("button").find(exactText("Забронировать")).click();
+        $(validPhoneSelector + ".input__sub").shouldBe(hidden);
+        $(invalidPhoneSelector).shouldBe(visible).shouldHave(text(invalidPhoneText));
+    }
 }
