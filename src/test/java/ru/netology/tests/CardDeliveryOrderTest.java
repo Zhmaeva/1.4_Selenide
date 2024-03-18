@@ -149,8 +149,9 @@ public class CardDeliveryOrderTest {
         $(notificationTitleSelector).shouldBe(hidden);
         $(invalidAgreementSelector).shouldBe(visible);
         String color = Color.fromString($(invalidAgreementSelector).getCssValue("color")).asHex();
-        Assertions.assertEquals("#ff5c5c", color );
+        Assertions.assertEquals("#ff5c5c", color);
     }
+
     //поле ГОРОД заполнено не субъектом РФ
     @Test
     void shouldNotSendFormWhenCityNotRF() {
