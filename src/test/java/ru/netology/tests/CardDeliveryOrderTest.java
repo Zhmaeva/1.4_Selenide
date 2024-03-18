@@ -3,12 +3,14 @@ package ru.netology.tests;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.openqa.selenium.By;
 import org.openqa.selenium.Keys;
 import org.openqa.selenium.support.Color;
 
 import java.time.Duration;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.util.Locale;
 
 import static com.codeborne.selenide.Condition.*;
 import static com.codeborne.selenide.Selenide.*;
@@ -65,7 +67,6 @@ public class CardDeliveryOrderTest {
         $(validPhoneSelector).setValue("+70000000000");
         $(validAgreementSelector).click();
         $$("button").find(exactText("Забронировать")).click();
-        // $("fieldset").shouldBe(disabled); ?
         $(notificationTitleSelector).shouldBe(visible, Duration.ofSeconds(15)).shouldHave(text(notificationTitleText));
         $(notificationContentSelector).shouldBe(visible, Duration.ofSeconds(15)).shouldHave(text(notificationContentText + date));
     }
@@ -145,8 +146,8 @@ public class CardDeliveryOrderTest {
         $(validNameSelector).setValue("Мария-Виктория Волхонская");
         $(validPhoneSelector).setValue("+70000000000");
         $$("button").find(exactText("Забронировать")).click();
-        $(invalidAgreementSelector).shouldBe(visible);
         $(notificationTitleSelector).shouldBe(hidden);
+        $(invalidAgreementSelector).shouldBe(visible);
         String color = Color.fromString($(invalidAgreementSelector).getCssValue("color")).asHex();
         Assertions.assertEquals("#ff5c5c", color );
     }
@@ -302,5 +303,51 @@ public class CardDeliveryOrderTest {
         $$("button").find(exactText("Забронировать")).click();
         $(validPhoneSelector + ".input__sub").shouldBe(hidden);
         $(invalidPhoneSelector).shouldBe(visible).shouldHave(text(invalidPhoneText));
+    }
+
+    //Задача №2: взаимодействие с комплексными элементами
+    @Test
+    void shouldSelectCityFromTheDropdownList() {
+        String date = calculateDate(4);
+        String city = "Екатеринбург";
+        $(validCitySelector).setValue("ка");
+        $(".input__popup .menu").should(visible);
+        $$(".input__popup .menu .menu-item").find(text(city)).click();
+        $(validDateSelector).setValue(date);
+        $(validNameSelector).setValue("Петров Петр");
+        $(validPhoneSelector).setValue("+70000000000");
+        $(validAgreementSelector).click();
+        $$("button").find(exactText("Забронировать")).click();
+        $(notificationTitleSelector).shouldBe(visible, Duration.ofSeconds(15)).shouldHave(text(notificationTitleText));
+        $(notificationContentSelector).shouldBe(visible, Duration.ofSeconds(15)).shouldHave(text(notificationContentText + date));
+        Assertions.assertEquals(city, $(validCitySelector).getValue());
+    }
+
+    @Test
+    void shouldSelectDateForTheWeekAheadThroughTheCalendarTool() {
+        int daysAhead = 7;
+        LocalDate date = LocalDate.now().plusDays(daysAhead);
+        String dateDelivery = calculateDate(daysAhead);
+        String day = date.format(DateTimeFormatter.ofPattern("dd"));
+        String month = date.format(DateTimeFormatter.ofPattern("LLLL", Locale.forLanguageTag("ru")));
+        String year = date.format(DateTimeFormatter.ofPattern("yyyy"));
+        $(validCitySelector).setValue("Екатеринбург");
+        $(".input__box .input__icon .icon-button").click();
+        $(".popup .calendar").should(visible);
+        String name = $(".calendar__name").should(visible).text().toLowerCase();
+
+        if (!name.equals(month + " " + year)) {
+            $("[data-step='1']").click();
+        }
+
+        $$(".calendar__layout .calendar__day").find(text(day)).click();
+        $(validNameSelector).setValue("Петров Петр");
+        $(validPhoneSelector).setValue("+70000000000");
+        $(validAgreementSelector).click();
+        $$("button").find(exactText("Забронировать")).click();
+        $(notificationTitleSelector).shouldBe(visible, Duration.ofSeconds(15)).shouldHave(text(notificationTitleText));
+        $(notificationContentSelector).shouldBe(visible, Duration.ofSeconds(15)).shouldHave(text(notificationContentText + dateDelivery));
+        Assertions.assertEquals(dateDelivery, $(validDateSelector).getValue());
+
     }
 }
